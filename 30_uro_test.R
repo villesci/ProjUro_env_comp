@@ -1,0 +1,7 @@
+uro<-read.csv(here::here("large_30_count.csv"))
+View(uro)
+ab<-(aov(shell_length~site,uro))
+summary(ab)
+library(ggplot2)
+ggplot(uro,aes(x=site,y=shell_length,color=site))+geom_boxplot()+geom_jitter()
+TukeyHSD(ab)

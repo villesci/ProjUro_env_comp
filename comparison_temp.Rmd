@@ -1,0 +1,299 @@
+---
+title: "NH-NC-GA Environment Comparison"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(tidyverse)
+library(tabulizer)
+library(lubridate)
+library(dplyr)
+```
+
+```{r, include=F,warning=F}
+
+#Here, I bring in the temperature data, put into posixct format, and calulcate hourly means of temperature to standardize data intervals. 
+#gb
+gb<-read.csv(here::here("data/GRBGBWQ.csv"))
+gb<-gb[,c(3,7)]
+gb$rdate<-as.POSIXct(gb$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+gb<-na.omit(gb)
+gb$WTMP<-gb$Temp
+gb<-gb[,c(3,4)]
+gb$site<-"Great Bay, NH"
+gb$breaks <- cut(gb$rdate, breaks="hour")
+gbmeans <- aggregate(WTMP ~ breaks, gb, mean)
+gbmeans$site<-"Great Bay, NH"
+
+#duke
+dk<-read.csv(here::here("data/duke.csv"))
+dk$rdate<-as.POSIXct(dk$DateTimeStamp,tz="","%m/%d/%y%H:%M")
+dk<-na.omit(dk)
+dk<-subset(dk,dk$WTMP !=999)
+dk<-dk[,c(2:4)]
+dk$breaks <- cut(dk$rdate, breaks="hour")
+dkmeans <- aggregate(WTMP ~ breaks, dk, mean)
+dkmeans$site<-"Duke, NC"
+
+#sk
+sk<-read.csv(here::here("data/SAPDCWQ.csv"))
+sk<-sk[,c(3,7)]
+
+sk$rdate<-as.POSIXct(sk$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+sk$WTMP<-sk$Temp
+sk$WTMP<-as.numeric(sk$WTMP)
+sk<-na.omit(sk)
+sk<-sk[-c(1:2)]
+sk$breaks <- cut(sk$rdate, breaks="hour")
+skmeans <- aggregate(WTMP ~ breaks, sk, mean)
+skmeans$site<-"Sapelo, GA"
+
+
+comp<-rbind(gbmeans,dkmeans,skmeans)
+compsimple<-rbind(gbmeans,skmeans)
+#put the breaks column into date format so we can scale the x axis
+comp$new<-as.Date(comp$breaks)
+compsimple$new<-as.Date(compsimple$breaks)
+```
+
+## Site comparison
+
+NERRS buoys have proven to be reliable and methodologically comparable between sites. Further, there are several buoy options within each NERRS which can be useful when determining collection sites of Urosalpinx. The figure below compares the water temperatures between NERRS buoy sites in Great Bay, NH (GRBGBWQ) and Sapelo, GA (SAPDCWQ) for the year 2021. Note that Great Bay temperature records do not begin until April due to ice conditions in the estuary. The record also can terminate early in November or December in NH because of ice. 
+```{r,echo=F,warning=F}
+  #ab<-
+  ggplot(comp, aes(x=new,y=WTMP,color=site))+geom_point(alpha=0.05)+theme_classic()+geom_smooth(aes(group=site))+labs(color="Site", x="",y="Water Temperature (°C)")+scale_x_date(date_breaks = "2 month", date_labels =  "%b %Y") 
+
+bc<-ggplot(compsimple, aes(x=new,y=WTMP))+geom_point(aes(color=site),alpha=0.05)+theme_classic()+geom_smooth(aes(group=site),color="black")+labs(color="Site", x="",y="Water Temperature (°C)")+scale_x_date(date_breaks = "2 month", date_labels =  "%b %Y") +scale_color_manual(values=c("dark violet","tomato"))+theme(legend.position="none")
+
+#ggsave(bc,file="comparison_site_nh_ga.tiff",dpi=600)
+
+```
+
+# making plot for grc poster
+
+```{r}
+#gb
+gbold<-read.csv(here::here("data/jackson.csv"))
+gbold$rdate<-as.POSIXct(gbold$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+gbold<-na.omit(gbold)
+gbold<-gbold[,c(2,4)]
+
+
+#sk
+skold<-read.csv(here::here("data/old/sk/SAPDCWQ.csv"))
+skold<-skold[,c(3,7)]
+
+skold$rdate<-as.POSIXct(skold$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+skold$WTMP<-skold$Temp
+skold$WTMP<-as.numeric(skold$WTMP)
+skold<-filter(skold,rdate>"2018-01-01 00:00:00" & rdate< "2018-12-31 00:00:00")
+skold<-na.omit(skold)
+
+
+skold$breaks <- cut(skold$rdate, breaks="hour")
+skmeansold <- aggregate(WTMP ~ breaks, skold, mean)
+skmeansold$site<-"Sapelo, GA"
+
+gbold$breaks <- cut(gbold$rdate, breaks="hour")
+gbmeansold <- aggregate(WTMP ~ breaks, gbold, mean)
+gbmeansold$site<-"Great Bay, NH"
+
+compold<-rbind(skmeansold,gbmeansold)
+compold$new<-as.Date(compold$breaks)
+
+cd<-ggplot(compold, aes(x=new,y=WTMP))+geom_point(aes(color=site),alpha=0.05)+theme_classic()+geom_smooth(aes(group=site),color="black")+labs(color="Site", x="",y="Water Temperature (°C)")+scale_x_date(date_breaks = "2 month", date_labels =  "%b %Y") +scale_color_manual(values=c("dark violet","tomato"))+theme(legend.position="none")
+
+ggsave(cd,file="comparison_site_nh_ga_2018.tiff",dpi=600)
+
+
+```
+
+## Potential issues with data sourcing
+
+### Great Bay
+
+The Great Bay buoy site here is from the middle of the basin, 1.97 km from the original Urosalpinx Great Bay collection site. The Jackson Estuarine Lab (UNH) has historically collected water temperature data from their flowing seawater systems, the intake of which is much closer to our collection site of Urosalpinx (less than a kilometer). I have obtained data from 2018 from a contact at the lab, but have learned that they stopped doing this in 2019. Below is the data from 2018 from the Jackson lab overlaid on the Great Bay buoy data. The warming at the end of the Jackson record is likely due to the addition of a heater to the system. 
+
+
+```{r,include=F}
+jack<-read.csv(here::here("data/jackson.csv"))
+jack$date<-as.POSIXct(jack$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+jack$rdate<-jack$date %m+% years(3)
+jack<-na.omit(jack)
+jack<-jack[,c(2,3,5)]
+jack$breaks <- cut(jack$rdate, breaks="hour")
+jackmeans <- aggregate(WTMP ~ breaks, jack, mean)
+
+compjack<-rbind(gb,jack)
+```
+```{r,warning=F}
+ggplot(compjack, aes(x=rdate,y=WTMP,color=site))+geom_point()+theme_classic()+geom_smooth(aes(group=site),color="black")+labs(color="Site", x="",y="Water Temperature (°C)")
+
+
+```
+
+#### Recommendations for Great Bay 
+
+The temperature record from NERRS in Great Bay is likely a good candidate for use due to its proximity to our collection site. However, using data loggers in the vicinity of collection may be a good idea for accurate, site-specific temperature records.
+
+### North Carolina
+
+Fortunately, we collected Urosalpinx at the Duke marine lab, right next to the NDBC site BFTN7. This data source is complete and a good pairing with our collection site. 
+
+### Georgia
+
+In the vicinity of the GA Urosalpinx collection site at the Skidaway Institute are very few environmental data sources. SKIO had previously collected temperature data from Groves Creek, right by the institute pier, but this was only for the years 2013-2015 via (https://www.bco-dmo.org/dataset/682937). We therefore opted to use more complete data from other sources, either from NDBC or NERRS. 
+
+The nearest NDBCS buoy in the Savannah river was previously shown to be too influenced by the river to be useful, so I refocused on the Sapelo NERRS site, which like Great Bay has several potential sites. However, since Sapelo is around 60-70 km from the original Urosalpinx collection site at Skidaway, I wanted to make sure there was high correlation between the 1-2 years of existing Skidaway data and the Sapelo sites. 
+
+Below, I plot the Sapelo data with Skidaway data (gcsk2) and run model comparisons between the two. 
+
+
+```{r,echo=F,warning=F,include=F}
+#This chunk reads in temperature sources 
+
+#groves creek
+gcsk<-read.csv(here::here("data/sk/gcsk.csv"))
+gcsk<-gcsk%>%unite("DateTimeStamp", c(2:3),sep="")
+gcsk$rdate<-as.POSIXct(gcsk$DateTimeStamp,tz="", "%m/%d/%y%H:%M")
+
+ggplot(gcsk,aes(x=rdate,y=WTMP,color=station))+geom_point()+facet_wrap(vars(station))
+
+gcsk2<-gcsk%>%filter(station=="S2")
+mean(gcsk2$WTMP)
+max(gcsk2$WTMP)
+
+## Sapelo 
+
+### Sapelo Island is a NERRS site to the south of Skidaway by about 60 km. This is the closest next buoy, NERRS or NDBC otherwise. Temps here are pretty much in line with grove creek estimates. This is because both are located within the Georgia barrier islands areas about the same distance up a tidal creek (3-4 km). If we can get over the fact this is 60 km away (maybe via corelation of temps), this is an option).
+
+sap2020<-read.csv(here::here("data/sk/saphdwq2020.csv"))
+sap2019<-read.csv(here::here("data/sk/saphdwq2019.csv"))
+sap2018<-read.csv(here::here("data/sk/saphdwq2018.csv"))
+sap2017<-read.csv(here::here("data/sk/saphdwq2017.csv"))
+sap2016<-read.csv(here::here("data/sk/saphdwq2016.csv"))
+sap2015<-read.csv(here::here("data/sk/saphdwq2015.csv"))
+sap2014<-read.csv(here::here("data/sk/saphdwq2014.csv"))
+sap2013<-read.csv(here::here("data/sk/saphdwq2013.csv"))
+
+
+
+sap<-rbind(sap2019,sap2018,sap2017,sap2016,sap2015,sap2014,sap2020,sap2013)
+sap<-sap[,c(3,7)]
+
+sap$rdate<-as.POSIXct(sap$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+sap$WTMP<-sap$Temp
+sap$WTMP<-as.numeric(sap$WTMP)
+
+
+ggplot(sap,aes(x=rdate,y=WTMP))+geom_point()
+mean(sap$WTMP,na.rm=T)
+max(sap$WTMP,na.rm=T)
+## Sapleo 2
+
+### The original sapelo site had freezing dates (low tide) and incomplete dates. Here's anotehr logger from the same site.
+
+sap2<-read.csv(here::here("data/sk/SAPDCWQ.csv"))
+sap2<-sap2[,c(3,7)]
+
+sap2$rdate<-as.POSIXct(sap2$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+sap2$WTMP<-sap2$Temp
+sap2$WTMP<-as.numeric(sap2$WTMP)
+
+
+ggplot(sap2,aes(x=rdate,y=WTMP))+geom_point()
+mean(sap2$WTMP,na.rm=T)
+max(sap2$WTMP,na.rm=T)
+
+## Sapelo 3
+
+### Trying one more option
+sap3<-read.csv(here::here("data/sk/SAPCAWQ.csv"))
+sap3<-sap3[,c(3,7)]
+
+sap3$rdate<-as.POSIXct(sap3$DateTimeStamp,tz="", "%m/%d/%Y%H:%M")
+sap3$WTMP<-sap3$Temp
+sap3$WTMP<-as.numeric(sap3$WTMP)
+
+
+ggplot(sap3,aes(x=rdate,y=WTMP))+geom_point()
+mean(sap3$WTMP,na.rm=T)
+max(sap3$WTMP,na.rm=T)
+```
+
+
+
+```{r,include=F}
+#this chunk reformats each site dataset so we can compare at once
+gcsk2<-gcsk2[,c(3:5)]
+sap<-sap[,c(3:4)]
+sap$site<-"sap"
+sap2<-sap2[,c(3:4)]
+sap2$site<-"sap2"
+sap3<-sap3[,c(3:4)]
+sap3$site<-"sap3"
+
+str(gcsk2)
+str(sk)
+str(sap)
+str(sap2)
+str(sap3)
+
+gcsk2_join<-data.frame(gcsk2=gcsk2$WTMP,rdate=gcsk2$rdate)
+sk_join<-data.frame(sk=sk$WTMP,rdate=sk$rdate)
+sap_join<-data.frame(sap=sap$WTMP,rdate=sap$rdate)
+sap2_join<-data.frame(sap2=sap2$WTMP,rdate=sap2$rdate)
+sap3_join<-data.frame(sap3=sap3$WTMP,rdate=sap3$rdate)
+
+gcsk2_avg<-gcsk2_join %>%dplyr::mutate(rdate = lubridate::floor_date(rdate, "day")) %>%group_by(rdate)%>%
+  dplyr::summarize(gcsk2=mean(gcsk2))%>%filter(rdate >= as.POSIXct("2014-01-01 00:00:00")& rdate <= as.POSIXct("2014-12-31 00:00:00"))
+
+
+sk_avg<-sk_join %>%dplyr::mutate(rdate = lubridate::floor_date(rdate, "day")) %>%group_by(rdate)%>%
+  dplyr::summarize(sk = mean(sk))%>%
+  filter(rdate >= as.POSIXct("2015-01-01 00:00:00")& rdate <= as.POSIXct("2015-12-31 00:00:00"))
+
+sk_avg$rdate<-sk_avg$rdate%m-%years(1)
+
+sap_avg<-sap_join %>%dplyr::mutate(rdate = lubridate::floor_date(rdate, "day")) %>%group_by(rdate)%>%
+  dplyr::summarize(sap = mean(sap))%>%filter(rdate >= as.POSIXct("2014-01-01 00:00:00")& rdate <= as.POSIXct("2014-12-31 00:00:00"))
+
+
+
+sap2_avg<-sap2_join %>%dplyr::mutate(rdate = lubridate::floor_date(rdate, "day")) %>%group_by(rdate)%>%
+  dplyr::summarize(sap2 = mean(sap2))%>%filter(rdate >= as.POSIXct("2014-01-01 00:00:00")& rdate <= as.POSIXct("2014-12-31 00:00:00"))
+
+sap3_avg<-sap3_join %>%dplyr::mutate(rdate = lubridate::floor_date(rdate, "day")) %>%group_by(rdate)%>%
+  dplyr::summarize(sap3 = mean(sap3))%>%filter(rdate >= as.POSIXct("2014-01-01 00:00:00")& rdate <= as.POSIXct("2014-12-31 00:00:00"))
+
+gcsk2_a<-data.frame(rdate=gcsk2_avg$rdate,WTMP=gcsk2_avg$gcsk2,site="gcsk2")
+sap_a<-data.frame(rdate=sap_avg$rdate,WTMP=sap_avg$sap,site="sap")
+sap2_a<-data.frame(rdate=sap2_avg$rdate,WTMP=sap2_avg$sap2,site="sap2")
+sap3_a<-data.frame(rdate=sap3_avg$rdate,WTMP=sap3_avg$sap3,site="sap3")
+
+abcd<-rbind(gcsk2_a,sap2_a,sap3_a,sap_a)
+sk_compare<-data.frame(rdate=unique(abcd$rdate))
+
+multi_full <- sk_compare%>%left_join(gcsk2_avg,by="rdate")%>%left_join(sk_avg,by="rdate")%>%left_join(sap_avg,by="rdate")%>%left_join(sap2_avg,by="rdate")%>%left_join(sap3_avg,by="rdate")
+```
+
+```{r,echo=F,warning=F}
+
+ggplot(abcd,aes(x=rdate,y=WTMP,color=site))+geom_point()+geom_smooth()
+
+multi_full$ndate<-as.numeric(multi_full$rdate)/(24*60*60)
+
+summary(lm(gcsk2~sap,multi_full))
+summary(lm(gcsk2~sap2,multi_full))
+summary(lm(gcsk2~sap3,multi_full))
+
+```
+You will notice that all sapelo sites had intercepts close to zero and slopes close to 1. We elected to use sap2 (SAPDCWQ) in the ProcB paper after examining these model fits and the mean/max temperatures at each site.
+
+#### Recommendations for Georgia
+
+It is clear that there is no ideal temperature source for our Skidaway Urosalpinx collection site. The existing Skidaway data at Groves Creek is only for 1-2 years 2013-2015, and the more complete and recent NERRS data sets from Sapelo are 60-70 km away, despite having good correlations with Skidaway data at Groves Creek.
+
+I therefore recommend that we reach out to SKIO to ensure that we are not missing out on any data sources, and if no temperature data is readily available that we 1) collect at Skidaway and accept the Sapelo temperature series, 2) collect Urosalpinx at Sapelo instead and use Sapelo time series, or 3) deploy temperature loggers at Skidaway, which will serve as our primary temperature source. 

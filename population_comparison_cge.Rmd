@@ -1,0 +1,192 @@
+---
+title: "Growth rate comparisons"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(here)
+library(ggplot2)
+library(ggsignif)
+```
+
+The purpose of this document is to 1) test for differences between NH and GA/NC Urosalpinx population growth rates at all common garden temperatures and 2) test for significant differences in initial hatchling size between populations.
+
+## Growth Rate Comparison, common garden experiment
+
+### New Hampshire-Georgia
+
+
+From our two-way ANOVA, we see that variance in growth rate is significantly different between populations across all temperatures.
+
+Using post-hoc t-tests between Georgia and New Hampshire populations, we see that 16 and 24 degrees there is no significant difference in growth rate. At 20 C and the three highest temperatures, we see that growth rate is significantly larger. 
+
+```{r,include=F}
+cge<-read.csv(here::here("cge.csv"))
+cge$temp<-as.numeric(cge$temp)
+cge$temp_fact<-factor(cge$temp,levels=c(16,20,24,26,28,30),labels=c("16 °C", "20 °C","24 °C","26 °C","28 °C", "30 °C"))
+cge$pop<-as.factor(cge$pop)
+
+cge<-na.omit(cge)
+
+nh_ga<-subset(cge,pop==c("New Hampshire","Georgia"))
+nh_nc<-subset(cge,pop==c("New Hampshire","North Carolina"))
+nc_ga<-subset(cge,pop==c("North Carolina","Georgia"))
+```
+
+```{r,warning=F,echo=F,include=F}
+
+nh_ga_split<-split(nh_ga,nh_ga$temp)
+nh_ga_split_16<-(t.test(cal.length~pop,data=nh_ga_split$'16'))
+nh_ga_split_20<-(t.test(cal.length~pop,data=nh_ga_split$'20'))
+nh_ga_split_24<-(t.test(cal.length~pop,data=nh_ga_split$'24'))
+nh_ga_split_26<-(t.test(cal.length~pop,data=nh_ga_split$'26'))
+nh_ga_split_28<-(t.test(cal.length~pop,data=nh_ga_split$'28'))
+nh_ga_split_30<-(t.test(cal.length~pop,data=nh_ga_split$'30'))
+
+
+nh_ga_results<-data.frame(matrix(ncol=2,nrow=6))
+colnames(nh_ga_results)<-c("temp","p-value")
+nh_ga_results[,1]<-c(16,20,24,26,28,30)
+nh_ga_results[1,2]<-nh_ga_split_16$p.value
+nh_ga_results[2,2]<-nh_ga_split_20$p.value
+nh_ga_results[3,2]<-nh_ga_split_24$p.value
+nh_ga_results[4,2]<-nh_ga_split_26$p.value
+nh_ga_results[5,2]<-nh_ga_split_28$p.value
+nh_ga_results[6,2]<-nh_ga_split_30$p.value
+
+```
+
+```{r,echo=F,warning=F}
+#Two-way ANOVA of growth rate between populations NH and GA
+summary(aov(cal.length~pop*temp,data=nh_ga))
+
+#table of post-hoc pairwise t-tests
+nh_ga_results
+
+limits1<-data.frame(xmin=c(15,23),xmax=c(17,25),y_position=c(2,4.5),annotation=c("NS","NS"))
+limits0<-data.frame(xmin=c(19,25,27,29),xmax=c(21,27,29,31),y_position=c(4.5,5.5,5.5,5.5),annotation=c("*","*","**","**"))
+
+
+ggplot(nh_ga,aes(x=temp,y=cal.length,color=pop,group=interaction(pop,temp)))+geom_boxplot()+geom_signif(xmin=limits1$xmin,xmax=limits1$xmax,y_position=limits1$y_position,annotation=limits1$annotation,color="black")+geom_signif(xmin=limits0$xmin,xmax=limits0$xmax,y_position=limits0$y_position,annotation=limits0$annotation,color="black")+labs(y="Growth Rate (mm)",x="Temperature C")
+
+
+```
+
+
+## New Hampshire-North Carolina
+
+From our two-way ANOVA, we see that variance in growth rate is not signficantly different between populations across all temperatures.
+
+Using post-hoc t-test between North Carolina and New Hampshire, we see that growth rate is different between populations at only one common garden temperature, 20 degrees. 
+
+```{r,warning=F,echo=F,include=F}
+
+nh_nc_split<-split(nh_nc,nh_nc$temp)
+nh_nc_split_16<-(t.test(cal.length~pop,data=nh_nc_split$'16'))
+nh_nc_split_20<-(t.test(cal.length~pop,data=nh_nc_split$'20'))
+nh_nc_split_24<-(t.test(cal.length~pop,data=nh_nc_split$'24'))
+nh_nc_split_26<-(t.test(cal.length~pop,data=nh_nc_split$'26'))
+nh_nc_split_28<-(t.test(cal.length~pop,data=nh_nc_split$'28'))
+nh_nc_split_30<-(t.test(cal.length~pop,data=nh_nc_split$'30'))
+
+
+nh_nc_results<-data.frame(matrix(ncol=2,nrow=6))
+colnames(nh_nc_results)<-c("temp","p-value")
+nh_nc_results[,1]<-c(16,20,24,26,28,30)
+nh_nc_results[1,2]<-nh_nc_split_16$p.value
+nh_nc_results[2,2]<-nh_nc_split_20$p.value
+nh_nc_results[3,2]<-nh_nc_split_24$p.value
+nh_nc_results[4,2]<-nh_nc_split_26$p.value
+nh_nc_results[5,2]<-nh_nc_split_28$p.value
+nh_nc_results[6,2]<-nh_nc_split_30$p.value
+
+```
+
+```{r,echo=F,warning=F}
+#Two-way ANOVA of growth rate between populations NH and GA
+summary(aov(cal.length~pop*temp,data=nh_nc))
+
+#table of post-hoc pairwise t-tests
+nh_nc_results
+
+limits2<-data.frame(xmin=c(15,23,25,27,29),xmax=c(17,25,27,29,31),y_position=c(2,4.5,5.5,5.5,5.5),annotation=c("NS","NS","NS","NS","NS"))
+
+
+ggplot(nh_nc,aes(x=temp,y=cal.length,color=pop,group=interaction(pop,temp)))+geom_boxplot()+geom_signif(xmin=limits2$xmin,xmax=limits2$xmax,y_position=limits2$y_position,annotation=limits2$annotation,color="black")+geom_signif(xmin=19,xmax=21,y_position=4,annotation="*",color="black")+labs(y="Growth Rate (mm)",x="Temperature C")
+
+
+```
+
+# North Carolina - Georgia Comparison
+
+From our two-way ANOVA, we can see that variance in growth rate is marginally not-significant (borderline significant) between North Carolina and Georgia populations across temperature. 
+
+Using post-hoc t-tests between North Carolina and Georgia growth rates at each temperature, we see that while growth rates are not significantly different from one another at low temperatures, separation in growth rate is achieved at highest temperatures (28 and 30 C).
+
+```{r,warning=F,echo=F,include=F}
+
+nc_ga_split<-split(nc_ga,nc_ga$temp)
+nc_ga_split_16<-(t.test(cal.length~pop,data=nc_ga_split$'16'))
+nc_ga_split_20<-(t.test(cal.length~pop,data=nc_ga_split$'20'))
+nc_ga_split_24<-(t.test(cal.length~pop,data=nc_ga_split$'24'))
+nc_ga_split_26<-(t.test(cal.length~pop,data=nc_ga_split$'26'))
+nc_ga_split_28<-(t.test(cal.length~pop,data=nc_ga_split$'28'))
+nc_ga_split_30<-(t.test(cal.length~pop,data=nc_ga_split$'30'))
+
+
+nc_ga_results<-data.frame(matrix(ncol=2,nrow=6))
+colnames(nc_ga_results)<-c("temp","p-value")
+nc_ga_results[,1]<-c(16,20,24,26,28,30)
+nc_ga_results[1,2]<-nc_ga_split_16$p.value
+nc_ga_results[2,2]<-nc_ga_split_20$p.value
+nc_ga_results[3,2]<-nc_ga_split_24$p.value
+nc_ga_results[4,2]<-nc_ga_split_26$p.value
+nc_ga_results[5,2]<-nc_ga_split_28$p.value
+nc_ga_results[6,2]<-nc_ga_split_30$p.value
+
+```
+
+```{r,echo=F,warning=F}
+#Two-way ANOVA of growth rate between populations NH and GA
+summary(aov(cal.length~pop*temp,data=nc_ga))
+
+#table of post-hoc pairwise t-tests
+nc_ga_results
+
+limits3<-data.frame(xmin=c(15,19,23,25),xmax=c(17,21,25,27),y_position=c(2,3.5,5,5),annotation=c("NS","NS","NS","NS"))
+limits4<-data.frame(xmin=c(27,29),xmax=c(29,31),y_position=c(5,5),annotation=c("**","*"))
+
+
+ggplot(nc_ga,aes(x=temp,y=cal.length,color=pop,group=interaction(pop,temp)))+geom_boxplot()+geom_signif(xmin=limits3$xmin,xmax=limits3$xmax,y_position=limits3$y_position,annotation=limits3$annotation,color="black")+geom_signif(xmin=limits4$xmin,xmax=limits4$xmax,y_position=limits4$y_position,annotation=limits4$annotation,color="black")
+
+
+
+```
+
+# Initial Hatchling Size comparison
+
+One concern would be if initial starting size of hatchlings affected our growth results. We corrected for this by calculating growth rate (rather than final growth size), but it is still a factor to consider.
+
+Here, we see through a one-way ANOVA that variance in initial hatchling size was significantly impacted by origin population.
+
+
+```{r,warning=F,echo=F}
+summary(aov(cal.length.start~pop,data=cge))
+```
+
+Using post-hoc Tukey pairwise comparisons, we see that initial hatchling size was significantly different between Georgia and New Hampshire, but not North Carolina and New Hampshire. This is interesting, as one might expect a larger initial size to give the Georgia population an enhanced final growth rate, but we see that is not the case in our analysis above. 
+
+
+```{r,echo=F}
+TukeyHSD(aov(cal.length.start~pop,data=cge))
+```
+
+
+
+```{r,warning=F,echo=F}
+
+
+ggplot(cge,aes(x=pop,y=cal.length.start,fill=pop))+geom_boxplot()+geom_signif(comparisons=list(c("Georgia","New Hampshire")),map_signif_level = T)+geom_signif(comparisons=list(c("North Carolina","New Hampshire")),map_signif_level = T)+geom_signif(comparisons=list(c("North Carolina","Georgia")),map_signif_level = T,y_position=2.3)+labs(y="Initial Hatchling Size (mm)",x="Population")
+
+```
